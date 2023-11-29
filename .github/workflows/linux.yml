@@ -1,4 +1,4 @@
-name: Linux
+name: Linux CI
 
 on:
   workflow_dispatch:
@@ -14,18 +14,33 @@ on:
       - '.github/workflows/linux.yml'
 
 jobs:
-  build:
+  build-linux:
     runs-on: ubuntu-latest
-    container: alpine:latest
+    container: alpine:edge
+    strategy:
+      matrix:
+        compiler: ["g++", "clang++"]
 
     steps:
-      - name: Install build tools
+      - name: Install LLVM
+        if: ${{ matrix.compiler == 'clang++' }}
+        run: apk add --update --no-cache clang cmake compiler-rt libc++-dev libc++-static lld llvm-libunwind-dev llvm-libunwind-static ninja
+
+      - name: Install GCC
+        if: ${{ matrix.compiler == 'g++' }}
         run: apk add --update --no-cache cmake g++ ninja
 
       - name: Checkout source
         uses: actions/checkout@v3
 
-      - name: Build
+      - name: Build LLVM
+        if: ${{ matrix.compiler == 'clang++' }}
+        run: |
+          CXX=clang++ cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBTOP_GPU=NO -DBTOP_STATIC=ON -DCMAKE_CXX_FLAGS="-fuse-ld=lld -rtlib=compiler-rt -stdlib=libc++ -unwindlib=libunwind"
+          cmake --build build -v
+
+      - name: Build GCC
+        if: ${{ matrix.compiler == 'g++' }}
         run: |
           CXX=g++ cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBTOP_GPU=NO -DBTOP_STATIC=ON
           cmake --build build -v
