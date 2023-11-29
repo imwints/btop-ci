@@ -1,0 +1,32 @@
+name: Linux
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - '!src/osx/**'
+      - '!src/freebsd/**'
+      - 'include/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/linux.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: alpine:latest
+
+    steps:
+      - name: Install build tools
+        run: apk add --update --no-cache cmake g++ ninja
+
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Build
+        run: |
+          CXX=g++ cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBTOP_GPU=NO -DBTOP_STATIC=ON
+          cmake --build build -v
+

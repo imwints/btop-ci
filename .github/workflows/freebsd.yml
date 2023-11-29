@@ -1,0 +1,34 @@
+name: FreeBSD
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - '!src/linux/**'
+      - '!src/osx/**'
+      - 'include/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/freebsd.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: '14.0'
+          usesh: true
+          prepare: |
+            pkg install -y cmake ninja
+
+          run: |
+            CXX=clang++ cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBTOP_STATIC=ON
+            cmake --build build -v
+
