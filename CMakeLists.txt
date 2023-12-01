@@ -83,14 +83,14 @@ endif()
 
 # Check for and enable LTO
 check_ipo_supported(RESULT ipo_supported)
-if(ipo_supported AND BTOP_LTO)
+if(ipo_supported AND BTOP_LTO AND NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set_target_properties(btop PROPERTIES INTERPROCEDURAL_OPTIMIZATION ON)
 endif()
 
 # TODO: enable more warnings in coordination with upstream
 target_compile_options(btop PRIVATE
   -Wall -Wextra -Wpedantic
-  -ftree-vectorize -fstack-clash-protection
+  -ftree-vectorize
 )
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   target_compile_options(btop PRIVATE
@@ -121,6 +121,11 @@ if(CXX_HAS_FSTACK_PROTECTOR)
   target_compile_options(btop PRIVATE -fstack-protector)
 endif()
 
+check_cxx_compiler_flag(-fstack-clash-protection CXX_HAS_FSTACK_CLASH_PROTECTION)
+if(CXX_HAS_FSTACK_CLASH_PROTECTION)
+  target_compile_options(btop PRIVATE -fstack-clash-protection)
+endif()
+
 check_cxx_compiler_flag(-fcf-protection CXX_HAS_FCF_PROTECTION)
 if(CXX_HAS_FCF_PROTECTION)
   target_compile_options(btop PRIVATE -fcf-protection)
@@ -132,6 +137,13 @@ target_compile_definitions(btop PRIVATE
   # Only has an effect with optimizations enabled
   $<$<NOT:$<CONFIG:Debug>>:_FORTIFY_SOURCE=2>
 )
+
+target_include_directories(btop SYSTEM PRIVATE include)
+
+# Enable pthreads
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+target_link_libraries(btop PRIVATE Threads::Threads)
 
 # Enable GPU support
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND BTOP_GPU)
@@ -163,8 +175,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND BTOP_GPU)
   endif()
 endif()
 
-target_include_directories(btop SYSTEM PRIVATE include)
-
 # mold
 if(BTOP_USE_MOLD)
   target_link_options(btop PRIVATE -fuse-ld=mold)
@@ -175,14 +185,14 @@ if(BTOP_STATIC)
   target_link_options(btop PRIVATE -static LINKER:--fatal-warnings)
 endif()
 
-# Add libraries
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
-target_link_libraries(btop PRIVATE Threads::Threads)
-
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  target_link_libraries(btop PRIVATE $<LINK_LIBRARY:FRAMEWORK,CoreFoundation)
-  target_link_libraries(btop PRIVATE $<LINK_LIBRARY:FRAMEWORK,IOKit)
+  target_link_libraries(btop PRIVATE $<LINK_LIBRARY:FRAMEWORK,CoreFoundation>)
+  target_link_libraries(btop PRIVATE $<LINK_LIBRARY:FRAMEWORK,IOKit>)
+
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(btop PRIVATE -stdlib=libc++)
+    target_link_options(btop PRIVATE -fuse-ld=lld -stdlib=libc++)
+  endif()
 elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
   find_package(devstat REQUIRED)
   find_package(kvm REQUIRED)

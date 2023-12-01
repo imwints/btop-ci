@@ -29,6 +29,6 @@ jobs:
             pkg install -y cmake ninja
 
           run: |
-            CXX=clang++ cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBTOP_STATIC=ON
+            CXX=clang++ cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBTOP_STATIC=ON
             cmake --build build -v
 
