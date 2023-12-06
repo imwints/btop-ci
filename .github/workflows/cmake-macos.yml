@@ -33,8 +33,14 @@ jobs:
           else
             brew install cmake llvm@17 ninja
           fi
+      
+      - name: Debug
+        if: ${{ contains(github.ref, 'test') && contains(matrix.toolchain, 'gcc') }} 
+        run: |
+          $(brew --prefix gcc@12)/bin/g++-12 apple-test.cc -o apple-test && ./apple-test
 
       - name: Configure
+        if: contains(github.ref, 'master')
         run: |
           if [[ ${{ matrix.toolchain }} == 'gcc' ]]; then
             export GCC_PREFIX="$(brew --prefix gcc@12)"
@@ -50,5 +56,6 @@ jobs:
           fi
 
       - name: Compile
+        if: contains(github.ref, 'master')
         run: cmake --build build --verbose
 
