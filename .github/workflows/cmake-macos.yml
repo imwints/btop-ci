@@ -17,10 +17,6 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}${{ matrix.toolchain }}-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
-    strategy:
-      fail-fast: true
-      matrix:
-        toolchain: [gcc, llvm]
     steps:
       - uses: actions/checkout@v4
 
@@ -28,26 +24,15 @@ jobs:
         run: |
           export HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1
           brew update --quiet
-          if [[ ${{ matrix.toolchain }} == 'gcc' ]]; then
-            brew install cmake gcc@12 ninja
-          else
-            brew install cmake llvm@17 ninja
-          fi
+          brew install cmake llvm@17 ninja
 
       - name: Configure
         run: |
-          if [[ ${{ matrix.toolchain }} == 'gcc' ]]; then
-            export GCC_PREFIX="$(brew --prefix gcc@12)"
-            echo "" | $(brew --prefix gcc@12)/bin/gcc-12 -v -x c++ -E -
-            echo "CXX=$GCC_PREFIX/bin/g++-12 CPPFLAGS=-I$GCC_PREFIX/include LDFLAGS=-L$GCC_PREFIX/lib"
-            CXX="$GCC_PREFIX/bin/g++-12" CPPFLAGS="-I$GCC_PREFIX/include" LDFLAGS="-L$GCC_PREFIX/lib" cmake -B build -G Ninja
-          else
-            export LLVM_PREFIX="$(brew --prefix llvm)"
-            export CXX="$LLVM_PREFIX/bin/clang++"
-            export CPPFLAGS="-I$LLVM_PREFIX/include"
-            export LDFLAGS="-L$LLVM_PREFIX/lib -L$LLVM_PREFIX/lib/c++ -Wl,-rpath,$LLVM_PREFIX/lib/c++ -fuse-ld=$LLVM_PREFIX/bin/ld64.lld"
-            cmake -B build -G Ninja
-          fi
+          export LLVM_PREFIX="$(brew --prefix llvm)"
+          export CXX="$LLVM_PREFIX/bin/clang++"
+          export CPPFLAGS="-I$LLVM_PREFIX/include"
+          export LDFLAGS="-L$LLVM_PREFIX/lib -L$LLVM_PREFIX/lib/c++ -Wl,-rpath,$LLVM_PREFIX/lib/c++"
+          cmake -B build -G Ninja
 
       - name: Compile
         run: cmake --build build --verbose
